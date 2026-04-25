@@ -5,37 +5,6 @@ import { useRouter } from "next/navigation";
 
 type AuthMode = "login" | "register";
 
-type StoredUser = {
-  name: string;
-  email: string;
-  password: string;
-};
-
-const STORAGE_KEY = "bella-flower-users";
-const SESSION_KEY = "bella-flower-session";
-
-function readUsers(): StoredUser[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    return JSON.parse(raw) as StoredUser[];
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: StoredUser[]) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-}
-
 export default function AuthForm() {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("register");
@@ -44,6 +13,7 @@ export default function AuthForm() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error">("success");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const title = useMemo(
     () => (mode === "register" ? "Регистрация" : "Вход в аккаунт"),
@@ -68,7 +38,7 @@ export default function AuthForm() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const trimmedEmail = email.trim().toLowerCase();
@@ -80,53 +50,39 @@ export default function AuthForm() {
       return;
     }
 
-    const users = readUsers();
-    const existingUser = users.find((user) => user.email === trimmedEmail);
+    setIsSubmitting(true);
 
-    if (mode === "register") {
-      if (existingUser) {
-        showError("Пользователь с таким email уже зарегистрирован.");
+    try {
+      const response = await fetch(`/api/auth/${mode === "register" ? "register" : "login"}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          email: trimmedEmail,
+          password: trimmedPassword
+        })
+      });
+
+      const payload = (await response.json()) as { message?: string };
+
+      if (!response.ok) {
+        showError(payload.message ?? "Не удалось выполнить запрос.");
         return;
       }
 
-      const nextUser: StoredUser = {
-        name: trimmedName,
-        email: trimmedEmail,
-        password: trimmedPassword
-      };
-
-      saveUsers([...users, nextUser]);
-      window.localStorage.setItem(
-        SESSION_KEY,
-        JSON.stringify({ name: nextUser.name, email: nextUser.email })
-      );
-      showSuccess("Регистрация прошла успешно. Теперь ты вошел в аккаунт.");
+      showSuccess(payload.message ?? "Успешно.");
       resetFields(true);
       window.setTimeout(() => {
         router.push("/");
+        router.refresh();
       }, 700);
-      return;
+    } catch {
+      showError("Сервер временно недоступен. Попробуй еще раз.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (!existingUser) {
-      showError("Такой пользователь не найден. Сначала зарегистрируйся.");
-      return;
-    }
-
-    if (existingUser.password !== trimmedPassword) {
-      showError("Неверный пароль. Попробуй еще раз.");
-      return;
-    }
-
-    window.localStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({ name: existingUser.name, email: existingUser.email })
-    );
-    showSuccess(`Добро пожаловать, ${existingUser.name}! Вход выполнен.`);
-    resetFields(true);
-    window.setTimeout(() => {
-      router.push("/");
-    }, 700);
   }
 
   return (
@@ -196,8 +152,8 @@ export default function AuthForm() {
           />
         </label>
 
-        <button type="submit" className="auth-submit">
-          {mode === "register" ? "Зарегистрироваться" : "Войти"}
+        <button type="submit" className="auth-submit" disabled={isSubmitting}>
+          {isSubmitting ? "Подождите..." : mode === "register" ? "Зарегистрироваться" : "Войти"}
         </button>
       </form>
 

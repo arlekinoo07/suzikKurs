@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const SESSION_KEY = "bella-flower-session";
-
 type SessionUser = {
   name: string;
   email: string;
@@ -18,18 +16,24 @@ export default function ProfileEntry({ variant = "nav" }: ProfileEntryProps) {
   const [user, setUser] = useState<SessionUser | null>(null);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(SESSION_KEY);
+    let isMounted = true;
 
-    if (!raw) {
-      setUser(null);
-      return;
-    }
+    fetch("/api/auth/session")
+      .then((response) => response.json())
+      .then((payload: { user: SessionUser | null }) => {
+        if (isMounted) {
+          setUser(payload.user);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setUser(null);
+        }
+      });
 
-    try {
-      setUser(JSON.parse(raw) as SessionUser);
-    } catch {
-      setUser(null);
-    }
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (!user) {

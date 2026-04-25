@@ -1,60 +1,12 @@
 import Image from "next/image";
+import Link from "next/link";
 import ProfileEntry from "./auth/profile-entry";
-
-const categories = [
-  { title: "Новый малыш", image: "/photo/nav1.jpeg" },
-  { title: "Юбилеи", image: "/photo/nav2.jpeg" },
-  { title: "Дни рождения", image: "/photo/nav3.jpeg" },
-  { title: "Розы", image: "/photo/nav4.jpeg" },
-  { title: "Свадьбы", image: "/photo/nav5.jpeg" }
-];
-
-const bouquets = [
-  {
-    title: "Цветочная фантазия",
-    price: "15 000 ₽",
-    oldPrice: "20 000 ₽",
-    tag: "Свадьба",
-    image: "/photo/buket1.jpeg"
-  },
-  {
-    title: "Весенняя серенада",
-    price: "8 000 ₽",
-    oldPrice: "15 000 ₽",
-    tag: "День рождения",
-    image: "/photo/buket2.jpeg"
-  },
-  {
-    title: "Зимний шепот",
-    price: "10 000 ₽",
-    oldPrice: "",
-    tag: "Юбилеи",
-    image: "/photo/buket3.jpeg"
-  },
-  {
-    title: "Садовое очарование",
-    price: "8 000 ₽",
-    oldPrice: "18 000 ₽",
-    tag: "День рождения",
-    image: "/photo/buket4.jpeg"
-  },
-  {
-    title: "Совершенство роз",
-    price: "20 000 ₽",
-    oldPrice: "",
-    tag: "Розы",
-    image: "/photo/buket5.jpeg"
-  },
-  {
-    title: "Летняя симфония",
-    price: "18 000 ₽",
-    oldPrice: "",
-    tag: "Свадьба",
-    image: "/photo/buket6.jpeg"
-  }
-];
+import { formatPrice, getBouquets, getCategories } from "../lib/catalog";
 
 export default function Home() {
+  const categories = getCategories();
+  const bouquets = getBouquets();
+
   return (
     <main className="landing">
       <div className="page-shell">
@@ -150,6 +102,7 @@ export default function Home() {
                   />
                 </div>
                 <h3>{category.title}</h3>
+                <p>{category.description}</p>
               </article>
             ))}
           </div>
@@ -168,26 +121,36 @@ export default function Home() {
 
           <div className="product-grid">
             {bouquets.map((bouquet) => (
-              <article key={bouquet.image} className="product-card">
-                <div className="product-photo-wrap">
-                  <div className="photo-circle" />
-                  <div className="product-image-frame">
-                    <Image
-                      className="product-image"
-                      src={bouquet.image}
-                      alt={bouquet.title}
-                      width={240}
-                      height={240}
-                    />
+              <Link
+                key={bouquet.slug}
+                href={`/bouquets/${bouquet.slug}`}
+                className="product-card"
+              >
+                <article>
+                  <div className="product-photo-wrap">
+                    <div className="photo-circle" />
+                    <div className="product-image-frame">
+                      <Image
+                        className="product-image"
+                        src={bouquet.image}
+                        alt={bouquet.title}
+                        width={240}
+                        height={240}
+                      />
+                    </div>
                   </div>
-                </div>
-                <p className="product-tag">{bouquet.tag}</p>
-                <h3>{bouquet.title}</h3>
-                <p className="product-price">
-                  <strong>{bouquet.price}</strong>
-                  {bouquet.oldPrice ? <s>{bouquet.oldPrice}</s> : null}
-                </p>
-              </article>
+                  <div className="product-card-body">
+                    <p className="product-tag">{bouquet.tag}</p>
+                    <h3>{bouquet.title}</h3>
+                    <p className="product-summary">{bouquet.shortDescription}</p>
+                    <p className="product-price">
+                      <strong>{formatPrice(bouquet.price)}</strong>
+                      {bouquet.oldPrice ? <s>{formatPrice(bouquet.oldPrice)}</s> : null}
+                    </p>
+                    <span className="product-link">Открыть карточку товара</span>
+                  </div>
+                </article>
+              </Link>
             ))}
           </div>
         </section>
