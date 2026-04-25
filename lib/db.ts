@@ -1,9 +1,10 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { createHash, timingSafeEqual } from "node:crypto";
 
-const databasePath = path.join(process.cwd(), "data", "bella-flower.db");
+const bundledDatabasePath = path.join(process.cwd(), "data", "bella-flower.db");
 
 type CategorySeed = {
   slug: string;
@@ -205,11 +206,27 @@ function ensureSeed(db: Database.Database) {
   }
 }
 
+function resolveDatabasePath() {
+  if (process.env.VERCEL) {
+    const runtimeDatabasePath = path.join(os.tmpdir(), "bella-flower.db");
+
+    if (!fs.existsSync(runtimeDatabasePath) && fs.existsSync(bundledDatabasePath)) {
+      fs.copyFileSync(bundledDatabasePath, runtimeDatabasePath);
+    }
+
+    return runtimeDatabasePath;
+  }
+
+  return bundledDatabasePath;
+}
+
 function initDb() {
+  const databasePath = resolveDatabasePath();
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const db = new Database(databasePath);
 
-  db.pragma("journal_mode = WAL");
+  db.pragma("journal_mode = DELETE");
+  db.pragma("foreign_keys = ON");
   db.exec(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
